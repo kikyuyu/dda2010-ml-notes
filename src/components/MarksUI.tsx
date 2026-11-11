@@ -47,46 +47,68 @@ export default function MarksUI() {
 
   useEffect(() => subscribe(() => setMarks(getMarks())), []);
 
-  // 文本选择 → 工具条
+  // 文本选择 → 工具条（兼容鼠标 / 触摸 / 键盘选择）
+  const selTimer = useRef<number | undefined>(undefined);
+  const [hint, setHint] = useState<{ x: number; y: number } | null>(null);
   useEffect(() => {
-    const onMouseUp = () => {
-      setTimeout(() => {
-        const s = window.getSelection();
-        if (!s || s.isCollapsed) {
-          setSel(null);
-          return;
-        }
-        const text = s.toString().trim();
-        if (text.length < 2) {
-          setSel(null);
-          return;
-        }
-        const node = s.anchorNode;
-        const el = node instanceof Element ? node : node?.parentElement;
-        const secEl = el?.closest('section.section') as HTMLElement | null;
-        const lecEl = el?.closest('article.lecture') as HTMLElement | null;
-        const inArticle = el?.closest('.article');
-        if (!secEl || !lecEl || !inArticle) {
-          setSel(null);
-          return;
-        }
-        const r = s.getRangeAt(0).getBoundingClientRect();
-        setNote('');
-        setNoteMode(false);
-        setColor('c1');
-        setSel({
-          text: text.slice(0, 500),
-          x: Math.min(Math.max(r.left + r.width / 2, 150), window.innerWidth - 170),
-          y: Math.max(r.top - 56, 70),
-          sectionId: secEl.id,
-          sectionTitle: secEl.querySelector('h3')?.childNodes[0]?.textContent?.trim() || secEl.id,
-          lectureNum: parseInt(lecEl.id.slice(1), 10),
-          lectureTitle: lecEl.querySelector('h2')?.textContent?.trim() || lecEl.id,
-        });
-      }, 10);
+    if (!hint) return;
+    const t = setTimeout(() => setHint(null), 2600);
+    return () => clearTimeout(t);
+  }, [hint]);
+
+  useEffect(() => {
+    const evalSel = () => {
+      const s = window.getSelection();
+      if (!s || s.isCollapsed) {
+        setSel(null);
+        return;
+      }
+      const text = s.toString().trim();
+      if (text.length < 2) {
+        setSel(null);
+        return;
+      }
+      const node = s.anchorNode;
+      const el = node instanceof Element ? node : node?.parentElement;
+      const r = s.getRangeAt(0).getBoundingClientRect();
+      const x = Math.min(Math.max(r.left + r.width / 2, 160), window.innerWidth - 160);
+      // 选区太靠顶部时工具条放到选区下方，避免被顶导航挡住
+      const y = r.top < 110 ? r.bottom + 12 : r.top - 52;
+      const secEl = el?.closest('section.section') as HTMLElement | null;
+      const lecEl = el?.closest('article.lecture') as HTMLElement | null;
+      if (!secEl || !lecEl || !el?.closest('.article')) {
+        // 不在讲义正文区（首页/陷阱页/模块头）：给出提示而不是毫无反应
+        setSel(null);
+        setHint({ x, y });
+        return;
+      }
+      setNote('');
+      setNoteMode(false);
+      setColor('c1');
+      setSel({
+        text: text.slice(0, 500),
+        x,
+        y,
+        sectionId: secEl.id,
+        sectionTitle: secEl.querySelector('h3')?.childNodes[0]?.textContent?.trim() || secEl.id,
+        lectureNum: parseInt(lecEl.id.slice(1), 10),
+        lectureTitle: lecEl.querySelector('h2')?.textContent?.trim() || lecEl.id,
+      });
     };
-    document.addEventListener('mouseup', onMouseUp);
-    return () => document.removeEventListener('mouseup', onMouseUp);
+    const onSelChange = () => {
+      window.clearTimeout(selTimer.current);
+      selTimer.current = window.setTimeout(evalSel, 220);
+    };
+    const onUp = () => window.setTimeout(evalSel, 10);
+    document.addEventListener('selectionchange', onSelChange);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('keyup', onUp);
+    return () => {
+      window.clearTimeout(selTimer.current);
+      document.removeEventListener('selectionchange', onSelChange);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('keyup', onUp);
+    };
   }, []);
 
   const saveSel = useCallback(() => {
@@ -277,6 +299,13 @@ export default function MarksUI() {
               onKeyDown={(e) => { if (e.key === 'Enter') saveSel(); }}
             />
           )}
+        </div>
+      )}
+
+      {/* 不在讲义区选中时的提示 */}
+      {hint && (
+        <div className="sel-hint" style={{ left: hint.x, top: hint.y }}>
+          ✎ 标记功能在主题讲义页使用：进入任意模块后，选中正文文字即可高亮、写备注
         </div>
       )}
 
