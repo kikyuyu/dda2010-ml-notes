@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import type { Block } from '../content/types';
+import { fig } from '../fig';
 
 function Tex({ tex }: { tex: string }) {
   const html = useMemo(
@@ -75,7 +76,7 @@ export function Block({ block }: { block: Block }) {
       return (
         <div className="block figure">
           <div className="fig-title">🖼️ {block.title}</div>
-          <img src={`figures/${block.src}`} alt={block.title} loading="lazy" />
+          <img src={fig(block.src)} alt={block.title} loading="lazy" />
           <figcaption dangerouslySetInnerHTML={{ __html: block.caption }} />
           {block.guide && (
             <div className="fig-guide">

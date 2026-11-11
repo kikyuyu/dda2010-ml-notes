@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { modules } from '../content';
+import { fig } from '../fig';
 
 export default function Home() {
   return (
@@ -11,7 +12,7 @@ export default function Home() {
           本站把 18 讲课件的全部知识点重新梳理为 7 大主题：专业术语与关键解释保留英文，详细讲解用中文；
           每个算法配对比图示与读图指南；从 Assignment 反推出 70+ 个判断题陷阱。目标是：<b>不考 coding、不考繁琐计算，专攻概念理解</b>。
         </p>
-        <img src="figures/ml_four_tasks.png" alt="四大机器学习任务" />
+        <img src={fig('ml_four_tasks.png')} alt="四大机器学习任务" />
       </div>
 
       <div className="home-sec">
